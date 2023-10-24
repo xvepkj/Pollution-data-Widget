@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AQI Air Quality Index: Real-time Air Pollution Level</title>
+    <style>
+         body {
+            font-family: Arial, sans-serif;
+            background-image: url('background.jpg');
+            background-size: cover;
+            text-align: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0px 0px 10px 0px #888888;
+            border-radius: 5px;
+            padding: 20px;
+        }
+
+        h1 {
+            background-color: #0074d9;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+
+        #search-bar {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        #city-input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #search-button {
+            background-color: #0074d9;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .widget {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: left;
+            background-color: #fff;
+        }
+
+        .widget h2 {
+            color: #0074d9;
+        }
+
+        .widget p {
+            margin: 10px 0;
+        }
+
+        .aqi-good {
+            background-color: #00e400;
+        }
+
+        .aqi-moderate {
+            background-color: #ffde33;
+        }
+
+        .aqi-unhealthy-sg {
+            background-color: #ff9933;
+        }
+
+        .aqi-unhealthy {
+            background-color: #ff0033;
+        }
+
+        .aqi-very-unhealthy {
+            background-color: #99004c;
+        }
+
+        .aqi-hazardous {
+            background-color: #660000;
+            color: #fff;
+        }
+
+        #site-logo {
+            max-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="aqi-logo.jpg" alt="Website Logo" id="site-logo">
+        <h1>AQI Air Quality Index: Real-time Air Pollution Level</h1>
+        <div id="search-bar">
+            <input type="text" id="city-input" placeholder="Enter City">
+            <button id="search-button">Search</button>
+            <select id="city-suggestion-list" style="display: none;">
+                <option value="">Select a city</option>
+            </select>
+        </div>
+        <div class="widget" id="aqi-widget">
+            <h2>AQI (Air Quality Index)</h2>
+            <p id="aqi-value">Loading...</p>
+            <p id="aqi-description"></p>
+        </div>
+        <div class="widget" id="o3-widget">
+            <h2>O3 (Ozone) Concentration</h2>
+            <p id="o3-value">Loading...</p>
+        </div>
+        <div class="widget" id="pm10-widget">
+            <h2>PM10 (Particulate Matter) Concentration</h2>
+            <p id="pm10-value">Loading...</p>
+        </div>
+    </div>
+
+    <script>
+        const searchButton = document.getElementById("search-button");
+        const cityInput = document.getElementById("city-input");
+        const aqiWidget = document.getElementById("aqi-widget");
+        const aqiValue = document.getElementById("aqi-value");
+        const aqiDescription = document.getElementById("aqi-description");
+        const o3Widget = document.getElementById("o3-widget");
+        const o3Value = document.getElementById("o3-value");
+        const pm10Widget = document.getElementById("pm10-widget");
+        const pm10Value = document.getElementById("pm10-value");
+        const citySuggestions = document.getElementById("city-suggestion-list");
+
+        const indianCities = {
+    "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Hyderabad", "Guntur"],
+    "Arunachal Pradesh": ["Itanagar", "Naharlagun", "Pasighat"],
+    "Assam": ["Guwahati", "Dibrugarh", "Jorhat", "Silchar"],
+    "Bihar": ["Patna", "Gaya", "Muzaffarpur", "Bhagalpur"],
+    "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur"],
+    "Goa": ["Panaji", "Vasco da Gama", "Margao"],
+    "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot"],
+    "Haryana": ["Gurgaon", "Faridabad", "Hisar", "Panipat"],
+    "Himachal Pradesh": ["Shimla", "Solan", "Mandi", "Dharamshala"],
+    "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro"],
+    "Karnataka": ["Bangalore", "Mysore", "Hubli", "Mangalore"],
+    "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur"],
+    "Madhya Pradesh": ["Bhopal", "Indore", "Jabalpur", "Gwalior"],
+    "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane"],
+    "Manipur": ["Imphal"],
+    "Meghalaya": ["Shillong"],
+    "Mizoram": ["Aizawl"],
+    "Nagaland": ["Kohima", "Dimapur"],
+    "Odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Sambalpur"],
+    "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala"],
+    "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota"],
+    "Sikkim": ["Gangtok"],
+    "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli"],
+    "Telangana": ["Hyderabad", "Warangal", "Nizamabad"],
+    "Tripura": ["Agartala"],
+    "Uttar Pradesh": ["Lucknow", "Kanpur", "Agra", "Varanasi"],
+    "Uttarakhand": ["Dehradun", "Haridwar", "Rishikesh", "Nainital"],
+    "West Bengal": ["Kolkata", "Howrah", "Durgapur", "Asansol"]
+};
+
+
+        cityInput.addEventListener("input", () => {
+            const selectedState = cityInput.value.trim();
+            updateCitySuggestions(selectedState);
+        });
+
+        citySuggestions.addEventListener("change", () => {
+            const selectedCity = citySuggestions.value;
+            if (selectedCity) {
+                cityInput.value = selectedCity;
+                searchPollutionData();
+            }
+        });
+
+        function updateCitySuggestions(selectedState) {
+            const cities = indianCities[selectedState] || [];
+            const cityOptions = cities.map(city => `<option value="${city}">${city}</option>`).join("");
+            citySuggestions.innerHTML = `<option value="">Select a city</option>${cityOptions}`;
+            citySuggestions.style.display = cities.length ? "block" : "none";
+        }
+
+        cityInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                searchPollutionData();
+            }
+        });
+
+        searchButton.addEventListener("click", () => {
+            searchPollutionData();
+        });
+
+        function searchPollutionData() {
+            const city = cityInput.value.trim();
+            if (city === "") {
+                alert("Please enter a city name.");
+                return;
+            }
+
+            fetchPollutionData(city);
+        }
+
+        function fetchPollutionData(city) {
+            const apiKey = "891821f2d390938d5299f280b9c9661c1dec63ab";
+            const apiUrl = `https://api.waqi.info/feed/${city}/?token=${apiKey}`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "ok") {
+                        const aqi = data.data.aqi;
+                        const o3 = data.data.iaqi.o3 ? data.data.iaqi.o3.v : "N/A";
+                        const pm10 = data.data.iaqi.pm10 ? data.data.iaqi.pm10.v : "N/A";
+
+                        const aqiColorClass = getAqiColorClass(aqi);
+                        const aqiDesc = getAqiDescription(aqi);
+
+                        aqiWidget.classList.add(aqiColorClass);
+
+                        aqiValue.innerHTML = `${aqi}`;
+                        aqiDescription.innerHTML = aqiDesc;
+
+                        o3Value.innerHTML = `${o3} µg/m³`;
+                        pm10Value.innerHTML = `${pm10} µg/m³`;
+                    } else {
+                        aqiValue.innerHTML = "Data not available";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching data:", error);
+                    aqiValue.innerHTML = "Error fetching data";
+                });
+        }
+
+        function getAqiColorClass(aqi) {
+            if (aqi <= 50) return "aqi-good";
+            if (aqi <= 100) return "aqi-moderate";
+            if (aqi <= 150) return "aqi-unhealthy-sg";
+            if (aqi <= 200) return "aqi-unhealthy";
+            if (aqi <= 300) return "aqi-very-unhealthy";
+            return "aqi-hazardous";
+        }
+
+        function getAqiDescription(aqi) {
+            if (aqi <= 50) return "Good";
+            if (aqi <= 100) return "Moderate";
+            if (aqi <= 150) return "Unhealthy for Sensitive Groups";
+            if (aqi <= 200) return "Unhealthy";
+            if (aqi <= 300) return "Very Unhealthy";
+            return "Hazardous";
+        }
+    </script>
+</body>
+</html>
